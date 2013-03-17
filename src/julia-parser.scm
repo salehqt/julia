@@ -727,7 +727,7 @@
       (case t
 	((|::|) (take-token s)
 	 (loop (list t ex (parse-call s))))
-	((->)   (take-token s)
+	((-> ↦)   (take-token s)
 	 ;; -> is unusual: it binds tightly on the left and
 	 ;; loosely on the right.
 	 (let ((lno (line-number-filename-node s)))
