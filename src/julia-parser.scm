@@ -74,7 +74,8 @@
 (define (assignment? e)
   (and (pair? e) (eq? (car e) '=)))
 
-(define unary-ops '(+ - ! ~ |<:| |>:|))
+(define unary-ops '(+ - ! ~ |<:| |>:|
+                    ¬ ⎷ ∂ ∇ ̅ )) 
 
 ; operators that are both unary and binary
 (define unary-and-binary-ops '(+ - $ & ~))
@@ -97,7 +98,7 @@
 (define ctrans-op (string->symbol "'"))
 (define vararg-op (string->symbol "..."))
 
-(define operators (list* '~ '! '-> ctrans-op trans-op vararg-op
+(define operators (list* '~ '! '¬ '⎷ '∂ '∇ '̅  '-> ctrans-op trans-op vararg-op
 			 (delete-duplicates
 			  (apply append (vector->list ops-by-prec)))))
 
