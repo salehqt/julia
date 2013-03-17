@@ -80,6 +80,8 @@
 ; operators that are both unary and binary
 (define unary-and-binary-ops '(+ - $ & ~))
 
+(define postfix-ops '(² ³ ´ |.%| ))
+
 ; operators that are special forms, not function names
 (define syntactic-operators
   '(= := += -= *= /= //= .//= .*= ./= |\\=| |.\\=| ^= .^= %= |\|=| &= $= =>
@@ -98,9 +100,11 @@
 (define ctrans-op (string->symbol "'"))
 (define vararg-op (string->symbol "..."))
 
-(define operators (list* '~ '! '¬ '⎷ '∂ '∇ '̅  '-> ctrans-op trans-op vararg-op
-			 (delete-duplicates
-			  (apply append (vector->list ops-by-prec)))))
+(define special-ops (list trans-op ctrans-op vararg-op '-> '↦))
+
+(define operators 
+  (let ((list-of-operators (list* unary-ops special-ops postfix-ops (vector->list ops-by-prec))))
+    (delete-duplicates (apply append list-of-operators))))
 
 (define op-chars
   (list->string
@@ -694,16 +698,20 @@
 
 ; handle ^, .^, and postfix ...
 (define (parse-factor-h s down ops)
-  (let ((ex (down s)))
+  (let loop ((ex (down s)))
     (let ((t (peek-token s)))
-      (cond ((eq? t '...)
-	     (take-token s)
-	     (list '... ex))
-	    ((not (memq t ops))
-	     ex)
-	    (else
-	     (list 'call
-		   (take-token s) ex (parse-factor-h s parse-unary ops)))))))
+      (cond 
+       ((eq? t '...)
+	(take-token s)
+	(list '... ex))
+       ((memq t ops)
+        (list 'call
+		 (take-token s) ex (parse-factor-h s parse-unary ops)))
+       ((memq t postfix-ops)
+	(loop (list 'call (take-token s) ex)))
+       (else
+	     ex)))))	
+
 
 ; -2^3 is parsed as -(2^3), so call parse-decl for the first argument,
 ; and parse-unary from then on (to handle 2^-3)
