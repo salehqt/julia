@@ -151,6 +151,12 @@ static Function *box16_func;
 static Function *box32_func;
 static Function *box64_func;
 
+/**
+ * This is the handle to the shared library
+ * that contains compiled version of functions
+ * it it loaded at loading along with sys.ji
+ */
+static void* handleNativeCodeSharedObject;
 /*
   stuff to fix up:
   - function/var name (un)mangling
@@ -162,6 +168,16 @@ static Function *box64_func;
 */
 
 // --- entry point ---
+
+void* native_function_lookup(const char* fn);
+
+inline std::string native_funcName(jl_lambda_info_t *lam)
+{
+    std::string name = lam->name->name;
+    // try to avoid conflicts in the global symbol table
+    return "julia_" + name;  
+}
+
 
 static Function *emit_function(jl_lambda_info_t *lam);
 //static int n_compile=0;
@@ -238,11 +254,21 @@ extern "C" void jl_generate_fptr(jl_function_t *f)
 extern "C" void jl_compile(jl_function_t *f)
 {
     jl_lambda_info_t *li = f->linfo;
-    if (li->functionObject == NULL) {
-        // objective: assign li->functionObject
-        li->inCompile = 1;
-        (void)to_function(li);
-        li->inCompile = 0;
+    if ((li->fptr == &jl_trampoline) && (li->functionObject == NULL)) {
+      
+        void* fp = native_function_lookup(native_funcName(li).c_str());
+        
+        if(fp)
+        {
+          f->fptr = li->fptr = (jl_fptr_t)fp;
+        }
+        else
+        {
+          // objective: assign li->functionObject
+          li->inCompile = 1;
+          (void)to_function(li);
+          li->inCompile = 0;
+        }
     }
 }
 
@@ -1826,6 +1852,7 @@ static Function *gen_jlcall_wrapper(jl_lambda_info_t *lam, Function *f)
     return w;
 }
 
+
 static Function *emit_function(jl_lambda_info_t *lam)
 {
     // step 1. unpack AST and allocate codegen context for this function
@@ -1932,9 +1959,7 @@ static Function *emit_function(jl_lambda_info_t *lam)
             specsig = true;
     }
 
-    std::string funcName = lam->name->name;
-    // try to avoid conflicts in the global symbol table
-    funcName = "julia_" + funcName;
+    std::string funcName = native_funcName(lam);
 
     jl_value_t *jlrettype = jl_ast_rettype(lam, (jl_value_t*)ast);
     if (specsig) {
@@ -2820,6 +2845,43 @@ extern "C" void jl_init_codegen(void)
                          jl_Module);
     jl_ExecutionEngine->addGlobalMapping(restore_arg_area_loc_func,
                                          (void*)&restore_arg_area_loc);
+}
+
+#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Support/raw_ostream.h>
+#include <dlfcn.h>
+
+extern "C" DLLEXPORT void write_module_to_bitcode(const char* s)
+{
+  std::string errorinfo;
+  raw_fd_ostream stream(s, errorinfo);
+  WriteBitcodeToFile(jl_Module, stream);
+  
+}
+
+extern "C" void jl_load_system_so(const char* baseName)
+{
+  std::string bn(baseName);
+  std::string soname = bn + ".so";
+  
+  handleNativeCodeSharedObject = dlopen(soname.c_str(), RTLD_NOW | RTLD_GLOBAL);
+  if(!handleNativeCodeSharedObject)
+  {
+    fprintf(stderr, "%s\n", dlerror());
+    fprintf(stderr, "compiled libraries are could not be loaded");
+  }
+}
+
+/**
+ * This function returns NULL if the function name is not found
+ * this should only be used as a cache
+ */
+void* native_function_lookup(const char* fn)
+{
+  if(handleNativeCodeSharedObject)
+    return dlsym(handleNativeCodeSharedObject, fn);
+  else
+    return NULL;
 }
 
 /*

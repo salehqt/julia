@@ -1163,6 +1163,8 @@ static inline void jl_eh_restore_state(jl_handler_t *eh)
     JL_SIGATOMIC_END();
 }
 
+DLLEXPORT void jl_load_system_so(const char* s);
+
 DLLEXPORT void jl_enter_handler(jl_handler_t *eh);
 DLLEXPORT void jl_pop_handler(int n);
 

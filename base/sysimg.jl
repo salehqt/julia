@@ -50,6 +50,8 @@ include("cell.jl")
 include("expr.jl")
 include("error.jl")
 
+
+
 # core numeric operations & types
 include("promotion.jl")
 include("bool.jl")
@@ -95,6 +97,9 @@ include("grisu.jl")
 import Grisu.print_shortest
 include("printf.jl")
 importall Printf
+
+
+
 
 # concurrency and parallelism
 include("iterator.jl")
@@ -318,4 +323,8 @@ let JL_PRIVATE_LIBDIR = get(ENV, "JL_PRIVATE_LIBDIR", "lib/julia")
 # create system image file
 ccall(:jl_save_system_image, Void, (Ptr{Uint8},),
       "$JULIA_HOME/../$JL_PRIVATE_LIBDIR/sys.ji")
+
+ccall(:write_module_to_bitcode, Void, (Ptr{Uint8},),
+      "$JULIA_HOME/../$JL_PRIVATE_LIBDIR/sys.bc")
+
 end

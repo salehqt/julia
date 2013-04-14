@@ -1,0 +1,15 @@
+The code generation is done in src/codegen.cpp
+
+All the functions and global variables are added to jl_Module which is
+initialized with the name "julia"
+
+Interface functions to src/codegen.cpp are
+  jl_Compile : generate LLVM code from AST for a function
+  jl_generate_fptr: Add the LLVM code to ExecutionEngine JIT compile and returno it.
+
+Code is generated at several places:
+  jl_compile_hint -> jl_get_specialization
+     Here a generic function is specialized and compiled to LLVM
+
+  jl_eval_with_compiler_p
+     This is just eval but compiles the function before executing it

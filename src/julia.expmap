@@ -298,7 +298,9 @@
     u8_strlen;
     u8_strwidth;
     uv_*;
+    write_module_to_bitcode;
     add_library_mapping;
+    jl_bounds_exception;
 
     /* freebsd */
     environ;
